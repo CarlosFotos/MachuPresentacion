@@ -250,7 +250,7 @@
             gap: 12px;
         }
 
-        /* ===== GALERÍA ===== */
+        /* Galería */
         .gallery-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -593,67 +593,72 @@
     </div>
 
     <script>
-        // ========== CARGA AUTOMÁTICA DE IMÁGENES (MEJORADA) ==========
-        (function loadGallery() {
+        // ========== CARGA AUTOMÁTICA DE IMÁGENES MEJORADA ==========
+        (function loadGalleryImages() {
             const gallery = document.getElementById('galleryGrid');
-            if (!gallery) return;
+            if (!gallery) {
+                console.error('No se encontró el contenedor de la galería');
+                return;
+            }
 
-            let index = 1;
+            console.log('Galería: iniciando carga de imágenes...');
+
+            let imageIndex = 1;
             let anyLoaded = false;
-            const MAX_ATTEMPTS = 30;
+            const maxAttempts = 30; // intentar hasta 30 imágenes
 
-            function loadNext() {
-                if (index > MAX_ATTEMPTS) {
+            function tryLoadImage() {
+                if (imageIndex > maxAttempts) {
                     if (!anyLoaded) {
-                        gallery.innerHTML = `
-                            <div class="gallery-placeholder">
-                                <i class="fas fa-images" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
-                                No se encontraron imágenes en la carpeta img/.<br>
-                                Agrega archivos 1.jpg, 2.jpg, etc.
-                            </div>
-                        `;
+                        gallery.innerHTML = `<div class="gallery-placeholder">
+                            <i class="fas fa-images" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
+                            No se encontraron imágenes en la carpeta img/.<br>
+                            Agrega archivos 1.jpg, 2.jpg, etc.
+                        </div>`;
+                        console.log('Galería: no se encontraron imágenes');
+                    } else {
+                        console.log('Galería: carga completa. Total imágenes cargadas: ' + (imageIndex - 1));
                     }
                     return;
                 }
 
-                const img = new Image();
-                img.alt = 'Evento ' + index;
+                const img = document.createElement('img');
+                const imgName = imageIndex + '.jpg';
+                img.alt = 'Evento ' + imageIndex;
                 img.loading = 'lazy';
-                img.src = 'img/' + index + '.jpg';
+                img.src = 'img/' + imgName;
+
+                console.log('Galería: intentando cargar ' + imgName);
 
                 img.onload = function() {
                     gallery.appendChild(img);
                     anyLoaded = true;
-                    index++;
-                    loadNext();
+                    console.log('Galería: ' + imgName + ' cargada correctamente');
+                    imageIndex++;
+                    tryLoadImage();
                 };
 
                 img.onerror = function() {
-                    // Si es la primera y falla, mostramos placeholder después de un breve retraso
-                    if (!anyLoaded && index === 1) {
+                    console.log('Galería: ' + imgName + ' NO encontrada');
+                    if (!anyLoaded && imageIndex === 1) {
+                        // Esperar un poco para ver si al menos la primera falla pero otras cargan
                         setTimeout(() => {
-                            // Verificar si realmente no hay imágenes (por si alguna se cargó mientras)
-                            if (!anyLoaded && gallery.children.length === 0) {
-                                gallery.innerHTML = `
-                                    <div class="gallery-placeholder">
-                                        <i class="fas fa-images" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
-                                        No se encontraron imágenes en la carpeta img/.<br>
-                                        Agrega archivos 1.jpg, 2.jpg, etc.
-                                    </div>
-                                `;
+                            if (!anyLoaded) {
+                                gallery.innerHTML = `<div class="gallery-placeholder">
+                                    <i class="fas fa-images" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
+                                    No se encontraron imágenes en la carpeta img/.<br>
+                                    Agrega archivos 1.jpg, 2.jpg, etc.
+                                </div>`;
+                                console.log('Galería: no se encontraron imágenes (confirmado)');
                             }
-                        }, 800);
+                        }, 300);
                     }
-                    index++;
-                    loadNext();
+                    imageIndex++;
+                    tryLoadImage();
                 };
             }
 
-            // Iniciar la carga
-            loadNext();
-
-            // Mensaje en consola para depuración
-            console.log('Galería: buscando imágenes en img/1.jpg, img/2.jpg, ...');
+            tryLoadImage();
         })();
 
         // ========== LIGHTBOX ==========
@@ -662,17 +667,14 @@
         const lightboxImg = document.getElementById('lightboxImg');
         const lightboxClose = document.getElementById('lightboxClose');
 
-        // Delegación de eventos para imágenes cargadas dinámicamente
-        if (galleryGrid) {
-            galleryGrid.addEventListener('click', function(e) {
-                if (e.target.tagName === 'IMG') {
-                    lightbox.classList.add('active');
-                    lightboxImg.src = e.target.src;
-                    lightboxImg.alt = e.target.alt;
-                    document.body.style.overflow = 'hidden';
-                }
-            });
-        }
+        galleryGrid.addEventListener('click', function(e) {
+            if (e.target.tagName === 'IMG') {
+                lightbox.classList.add('active');
+                lightboxImg.src = e.target.src;
+                lightboxImg.alt = e.target.alt;
+                document.body.style.overflow = 'hidden';
+            }
+        });
 
         function closeLightbox() {
             lightbox.classList.remove('active');
