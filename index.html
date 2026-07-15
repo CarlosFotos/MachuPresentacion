@@ -563,7 +563,7 @@
             <h2 class="section-title" data-i18n="gallery-title">Galería de <span>Eventos</span></h2>
             <p class="section-subtitle" data-i18n="gallery-sub">Algunos momentos capturados en congresos y sociales.</p>
             <div class="gallery-grid" id="galleryGrid">
-                <!-- Las imágenes se cargarán automáticamente con JavaScript -->
+                <!-- Las imágenes se cargarán automáticamente con JavaScript (carga en paralelo) -->
             </div>
         </div>
     </section>
@@ -593,7 +593,7 @@
     </div>
 
     <script>
-        // ========== CARGA AUTOMÁTICA DE IMÁGENES MEJORADA ==========
+        // ========== CARGA AUTOMÁTICA DE IMÁGENES (Carga en Paralelo - Estilo v13) ==========
         (function loadGalleryImages() {
             const gallery = document.getElementById('galleryGrid');
             if (!gallery) {
@@ -601,77 +601,70 @@
                 return;
             }
 
-            console.log('Galería: iniciando carga de imágenes...');
+            // Configuración: número total de imágenes y exclusiones (como en la v13)
+            const totalImages = 25; // Cambia este número si subes más fotos
+            const excludedImages = [21]; // Imágenes que no existen (ej: 21.jpg)
 
-            let imageIndex = 1;
-            let anyLoaded = false;
-            const maxAttempts = 30; // intentar hasta 30 imágenes
+            // Usamos un fragmento para construir el HTML en memoria y luego insertarlo de una vez
+            const fragment = document.createDocumentFragment();
+            let loadedCount = 0;
 
-            function tryLoadImage() {
-                if (imageIndex > maxAttempts) {
-                    if (!anyLoaded) {
+            for (let i = 1; i <= totalImages; i++) {
+                // Saltamos las imágenes excluidas
+                if (excludedImages.includes(i)) continue;
+
+                const img = document.createElement('img');
+                img.alt = 'Evento ' + i;
+                img.loading = 'lazy';
+                img.src = 'img/' + i + '.jpg';
+
+                // Si la imagen se carga correctamente, contamos
+                img.onload = function() {
+                    loadedCount++;
+                };
+
+                // Si una imagen falla, la ocultamos para no romper el layout
+                img.onerror = function() {
+                    this.style.display = 'none';
+                    // No detenemos la carga de las demás
+                };
+
+                fragment.appendChild(img);
+            }
+
+            // Insertamos todas las imágenes de golpe en el grid
+            gallery.appendChild(fragment);
+
+            // Verificación de seguridad: si después de 3 segundos ninguna imagen se cargó,
+            // mostramos el placeholder (por si realmente no hay fotos)
+            setTimeout(() => {
+                if (loadedCount === 0) {
+                    // Pero antes comprobamos si el grid tiene algún hijo visible
+                    const visibleImages = gallery.querySelectorAll('img:not([style*="display: none"])');
+                    if (visibleImages.length === 0) {
                         gallery.innerHTML = `<div class="gallery-placeholder">
                             <i class="fas fa-images" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
                             No se encontraron imágenes en la carpeta img/.<br>
                             Agrega archivos 1.jpg, 2.jpg, etc.
                         </div>`;
-                        console.log('Galería: no se encontraron imágenes');
-                    } else {
-                        console.log('Galería: carga completa. Total imágenes cargadas: ' + (imageIndex - 1));
                     }
-                    return;
                 }
-
-                const img = document.createElement('img');
-                const imgName = imageIndex + '.jpg';
-                img.alt = 'Evento ' + imageIndex;
-                img.loading = 'lazy';
-                img.src = 'img/' + imgName;
-
-                console.log('Galería: intentando cargar ' + imgName);
-
-                img.onload = function() {
-                    gallery.appendChild(img);
-                    anyLoaded = true;
-                    console.log('Galería: ' + imgName + ' cargada correctamente');
-                    imageIndex++;
-                    tryLoadImage();
-                };
-
-                img.onerror = function() {
-                    console.log('Galería: ' + imgName + ' NO encontrada');
-                    if (!anyLoaded && imageIndex === 1) {
-                        // Esperar un poco para ver si al menos la primera falla pero otras cargan
-                        setTimeout(() => {
-                            if (!anyLoaded) {
-                                gallery.innerHTML = `<div class="gallery-placeholder">
-                                    <i class="fas fa-images" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
-                                    No se encontraron imágenes en la carpeta img/.<br>
-                                    Agrega archivos 1.jpg, 2.jpg, etc.
-                                </div>`;
-                                console.log('Galería: no se encontraron imágenes (confirmado)');
-                            }
-                        }, 300);
-                    }
-                    imageIndex++;
-                    tryLoadImage();
-                };
-            }
-
-            tryLoadImage();
+            }, 3000); // 3 segundos es un margen seguro para conexiones lentas
         })();
 
-        // ========== LIGHTBOX ==========
+        // ========== LIGHTBOX (con delegación de eventos) ==========
         const galleryGrid = document.getElementById('galleryGrid');
         const lightbox = document.getElementById('lightbox');
         const lightboxImg = document.getElementById('lightboxImg');
         const lightboxClose = document.getElementById('lightboxClose');
 
+        // Delegación: escuchamos clics en el grid y detectamos si se hizo clic en una imagen
         galleryGrid.addEventListener('click', function(e) {
-            if (e.target.tagName === 'IMG') {
+            const target = e.target;
+            if (target.tagName === 'IMG') {
                 lightbox.classList.add('active');
-                lightboxImg.src = e.target.src;
-                lightboxImg.alt = e.target.alt;
+                lightboxImg.src = target.src;
+                lightboxImg.alt = target.alt;
                 document.body.style.overflow = 'hidden';
             }
         });
