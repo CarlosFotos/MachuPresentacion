@@ -250,7 +250,7 @@
             gap: 12px;
         }
 
-        /* Galería */
+        /* ===== GALERÍA ===== */
         .gallery-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -593,55 +593,67 @@
     </div>
 
     <script>
-        // ========== CARGA AUTOMÁTICA DE IMÁGENES ==========
-        (function loadGalleryImages() {
+        // ========== CARGA AUTOMÁTICA DE IMÁGENES (MEJORADA) ==========
+        (function loadGallery() {
             const gallery = document.getElementById('galleryGrid');
-            let imageIndex = 1;
-            let anyLoaded = false;
-            const maxAttempts = 20;
+            if (!gallery) return;
 
-            function tryLoadImage() {
-                if (imageIndex > maxAttempts) {
+            let index = 1;
+            let anyLoaded = false;
+            const MAX_ATTEMPTS = 30;
+
+            function loadNext() {
+                if (index > MAX_ATTEMPTS) {
                     if (!anyLoaded) {
-                        gallery.innerHTML = `<div class="gallery-placeholder">
-                            <i class="fas fa-images" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
-                            No se encontraron imágenes en la carpeta img/.<br>
-                            Agrega archivos 1.jpg, 2.jpg, etc.
-                        </div>`;
+                        gallery.innerHTML = `
+                            <div class="gallery-placeholder">
+                                <i class="fas fa-images" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
+                                No se encontraron imágenes en la carpeta img/.<br>
+                                Agrega archivos 1.jpg, 2.jpg, etc.
+                            </div>
+                        `;
                     }
                     return;
                 }
 
-                const img = document.createElement('img');
-                img.alt = 'Evento ' + imageIndex;
+                const img = new Image();
+                img.alt = 'Evento ' + index;
                 img.loading = 'lazy';
-                img.src = 'img/' + imageIndex + '.jpg';
+                img.src = 'img/' + index + '.jpg';
 
                 img.onload = function() {
                     gallery.appendChild(img);
                     anyLoaded = true;
-                    imageIndex++;
-                    tryLoadImage();
+                    index++;
+                    loadNext();
                 };
 
                 img.onerror = function() {
-                    if (!anyLoaded && imageIndex === 1) {
+                    // Si es la primera y falla, mostramos placeholder después de un breve retraso
+                    if (!anyLoaded && index === 1) {
                         setTimeout(() => {
-                            if (!anyLoaded) {
-                                gallery.innerHTML = `<div class="gallery-placeholder">
-                                    <i class="fas fa-images" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
-                                    No se encontraron imágenes en la carpeta img/.<br>
-                                    Agrega archivos 1.jpg, 2.jpg, etc.
-                                </div>`;
+                            // Verificar si realmente no hay imágenes (por si alguna se cargó mientras)
+                            if (!anyLoaded && gallery.children.length === 0) {
+                                gallery.innerHTML = `
+                                    <div class="gallery-placeholder">
+                                        <i class="fas fa-images" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
+                                        No se encontraron imágenes en la carpeta img/.<br>
+                                        Agrega archivos 1.jpg, 2.jpg, etc.
+                                    </div>
+                                `;
                             }
-                        }, 500);
+                        }, 800);
                     }
-                    imageIndex++;
-                    tryLoadImage();
+                    index++;
+                    loadNext();
                 };
             }
 
-            tryLoadImage();
+            // Iniciar la carga
+            loadNext();
+
+            // Mensaje en consola para depuración
+            console.log('Galería: buscando imágenes en img/1.jpg, img/2.jpg, ...');
         })();
 
         // ========== LIGHTBOX ==========
@@ -650,14 +662,17 @@
         const lightboxImg = document.getElementById('lightboxImg');
         const lightboxClose = document.getElementById('lightboxClose');
 
-        galleryGrid.addEventListener('click', function(e) {
-            if (e.target.tagName === 'IMG') {
-                lightbox.classList.add('active');
-                lightboxImg.src = e.target.src;
-                lightboxImg.alt = e.target.alt;
-                document.body.style.overflow = 'hidden';
-            }
-        });
+        // Delegación de eventos para imágenes cargadas dinámicamente
+        if (galleryGrid) {
+            galleryGrid.addEventListener('click', function(e) {
+                if (e.target.tagName === 'IMG') {
+                    lightbox.classList.add('active');
+                    lightboxImg.src = e.target.src;
+                    lightboxImg.alt = e.target.alt;
+                    document.body.style.overflow = 'hidden';
+                }
+            });
+        }
 
         function closeLightbox() {
             lightbox.classList.remove('active');
